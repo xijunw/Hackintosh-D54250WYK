@@ -15,6 +15,7 @@ MolSim 是一个跨平台桌面端科学计算辅助工具，面向量子化学/
 
 | 模块 | 说明 |
 |------|------|
+| **AI 命令层** | 自然语言命令窗口；AI Agent 解析意图、追问参数、编排工具调用 |
 | **结构建模** | 构建/导入周期体系、分子簇、界面超胞模型，3D GPU 加速实时预览 |
 | **输入生成** | 向导式生成各插件（CP2K/CPMD/…）的输入文件，基于 Jinja2 模板 |
 | **作业提交** | 本机直接运行或通过 SSH 提交到远程 HPC 集群（PBS/SLURM/SGE） |
@@ -66,6 +67,14 @@ MolSim 是一个跨平台桌面端科学计算辅助工具，面向量子化学/
 - **TOML**：用户配置文件（`config.toml`）
 - **HDF5**（h5py）：大型轨迹/结果数据集
 
+### AI Agent 层
+- **LLM 后端**：默认 Claude API（Anthropic SDK）；抽象为可切换后端（OpenAI / Ollama 离线备选）
+- **工具调用**：Anthropic SDK 原生 tool use，不引入 LangChain
+- **工具注册**：每个插件注册时同步向 `ToolRegistry` 注册 AI 可调用工具及 JSON Schema
+- **结构传递**：AI 上下文中只传结构摘要 + `structure_id` 引用，不传原始坐标
+- **风险控制**：高风险工具（删除/覆盖/取消作业）强制弹出 UI 确认框
+- 详细架构见 `docs/ai-agent-architecture.md`
+
 ### 打包发布
 - **PyInstaller**：Windows `.exe` / macOS `.app` 单文件包
 
@@ -110,8 +119,27 @@ molsim/
 │   │       ├── sge.py
 │   │       └── local.py
 │   │
+│   ├── agent/                     # AI Agent 层
+│   │   ├── loop.py                # AgentLoop：意图→工具调用→追问→回复
+│   │   ├── tools/                 # 工具定义与执行
+│   │   │   ├── registry.py        # ToolRegistry：动态注册/查询
+│   │   │   ├── structure_tools.py # build_water_box / load_structure …
+│   │   │   ├── input_tools.py     # generate_cp2k_input …
+│   │   │   ├── job_tools.py       # submit_job / job_status …
+│   │   │   └── analysis_tools.py  # parse_energy / plot_dos …
+│   │   ├── backends/              # LLM 后端抽象
+│   │   │   ├── base.py            # LLMBackend ABC
+│   │   │   ├── claude.py          # Anthropic SDK（默认）
+│   │   │   ├── openai.py          # OpenAI 兼容接口
+│   │   │   └── ollama.py          # 本地离线后端
+│   │   ├── context.py             # AppStateContext：注入当前项目/结构/插件状态
+│   │   └── conversation.py        # 对话历史管理与压缩
+│   │
 │   ├── ui/                        # GUI 层（PySide6）
 │   │   ├── main_window.py         # 主窗口：左侧项目树 + 中央工作区 + 右侧属性面板
+│   │   ├── nl_panel/              # 自然语言命令面板
+│   │   │   ├── input_widget.py    # 命令输入框 + 发送按钮
+│   │   │   └── response_view.py   # 流式响应 + 操作确认弹窗
 │   │   ├── structure_view/        # 3D 结构视图（PyVista + QVTKWidget）
 │   │   │   ├── viewer.py          # 球棍/多面体/等值面渲染
 │   │   │   └── trajectory.py     # 轨迹播放器
