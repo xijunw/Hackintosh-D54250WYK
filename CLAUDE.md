@@ -68,8 +68,9 @@ MolSim 是一个跨平台桌面端科学计算辅助工具，面向量子化学/
 - **HDF5**（h5py）：大型轨迹/结果数据集
 
 ### AI Agent 层
-- **LLM 后端**：默认 Claude API（Anthropic SDK）；抽象为可切换后端（OpenAI / Ollama 离线备选）
-- **工具调用**：Anthropic SDK 原生 tool use，不引入 LangChain
+- **LLM 后端**：默认 Claude API（Anthropic SDK）；DeepSeek V4 为备选（OpenAI-compatible 接口）
+- **工具调用**：Claude 使用 Anthropic SDK 原生 tool use；DeepSeek 使用 OpenAI function calling；ToolRegistry 统一格式，后端切换对业务透明
+- **追问交互**：AI 生成参数 JSON Schema → UI 渲染结构化表单弹窗 → 用户填写提交，全程无文本歧义
 - **工具注册**：每个插件注册时同步向 `ToolRegistry` 注册 AI 可调用工具及 JSON Schema
 - **结构传递**：AI 上下文中只传结构摘要 + `structure_id` 引用，不传原始坐标
 - **风险控制**：高风险工具（删除/覆盖/取消作业）强制弹出 UI 确认框
@@ -130,8 +131,7 @@ molsim/
 │   │   ├── backends/              # LLM 后端抽象
 │   │   │   ├── base.py            # LLMBackend ABC
 │   │   │   ├── claude.py          # Anthropic SDK（默认）
-│   │   │   ├── openai.py          # OpenAI 兼容接口
-│   │   │   └── ollama.py          # 本地离线后端
+│   │   │   └── deepseek.py        # DeepSeek V4（OpenAI-compatible，备选）
 │   │   ├── context.py             # AppStateContext：注入当前项目/结构/插件状态
 │   │   └── conversation.py        # 对话历史管理与压缩
 │   │
